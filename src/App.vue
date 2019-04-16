@@ -1,30 +1,42 @@
 <template>
   <div id="app">
     <div class="setting">
-      <div>
+      <div v-if="!isStart">
         <label for="size">size: </label>
-        <select v-model="size"
+        <select v-model.number="size"
           id="size">
-          <option value="4">4</option>
-          <option value="5">5</option>
-          <option value="6">6</option>
+          <option :value="4">4</option>
+          <option :value="5">5</option>
+          <option :value="6">6</option>
         </select>
       </div>
-      <button @click="start">start</button>
-      <button>restart</button>
+      <button @click="start"
+        v-if="!isStart">start</button>
+      <button v-if="isStart"
+        @click="isStart = false">restart</button>
     </div>
-    <div class="block-ctn answer" style="transform: scale(0.5); opacity: 0.5; transform-origin: left-top">
+    <div class="blocks-ctn answer"
+      style=""
+      v-if="isStart">
+      <!-- .start-animation -->
       <div class="block"
-        v-for="(answerBlock, index) in answer"
+        v-for="(answerBlock, index) in answer()"
         :key="answerBlock.id"
-        :style="{order: index, backgroundColor: answerBlock.color, height: 800 / (size - 2) + 'px', width: 800 / (size - 2) + 'px'}"></div>
+        :style="{order: index, backgroundColor: answerBlock.color, height: 150 / (size - 2) + 'px', width: 150 / (size - 2) + 'px'}"></div>
     </div>
     <div class="blocks-ctn"
       v-if="isStart">
+      <div class="answer-ring" :style="answerRingStyle"></div>
       <div class="block"
-        v-for="(block, index) in blocks"
+        v-for="(block, index) in block()"
         :key="block.id"
-        :style="{order: index, backgroundColor: block.color, height: 800 / size + 'px', width: 800 / size + 'px'}"></div>
+        :style="{order: index, backgroundColor: block.color, height: (blockSize / size) + 'px', width: (blockSize / size) + 'px'}"></div>
+    </div>
+
+    <div class="finish"
+      v-if="isStart && isFinish()">
+      <div @click="reset()" class="line">Success<br>You spend {{getTotalTime()}} seconds<br>click to resetart</div>
+      <div class="background"></div>
     </div>
   </div>
 </template>
@@ -42,31 +54,70 @@ export default {
       isStart: false
     }
   },
+  destroyed () {
+    document.removeEventListener('keydown', this.move)
+  },
   computed: {
+    blockSize: {
+      get () {
+        return +getComputedStyle(document.documentElement).getPropertyValue('--blocks-ctn-size').match(/\d+/)[0]
+      },
+      set (value) {
+        const _n = +value
+        document.documentElement.style.setProperty('--blocks-ctn-size', _n + 'px')
+      }
+    },
+    answerRingStyle () {
+      const sizePX = +getComputedStyle(document.documentElement).getPropertyValue('--blocks-ctn-size').match(/\d+/)[0]
+      const style = {
+        top: sizePX / this.size + 'px',
+        left: sizePX / this.size + 'px',
+        width: (sizePX - (sizePX / this.size * 2)) + 'px',
+        height: (sizePX - (sizePX / this.size * 2)) + 'px'
+      }
+      console.log(style)
+      return style
+    }
+  },
+  methods: {
+    answer () {
+      return core.answer
+    },
+    getTotalTime () {
+      return ~~(core.endTime - core.startTime) / 1000
+    },
+    // answerRingStyle () {
+    //   return {
+    //     document
+    //   }
+    // },
+    block () {
+      return core.blocks
+    },
+    reset () {
+      core.reset()
+      this.size = core.size
+      this.isStart = false
+      this.$forceUpdate()
+      document.removeEventListener('keydown', this.move)
+    },
     isFinish () {
       if (!this.isStart) return false
       return core.validation()
     },
-    blocks () {
-      return core.blocks
-    },
-    answer () {
-      return core.answer
-    }
-  },
-  methods: {
     start () {
       core.setSize(this.size)
       core.setMode(this.mode)
       core.start()
       this.isStart = true
-      core.createAnswer()
-      document.onkeydown = e => this.move(e.key)
+      // core.createAnswer()
+      console.log(core.blocks.map(ele => ele.color))
+      document.addEventListener('keydown', this.move)
       this.$forceUpdate()
     },
-    move (direction = '') {
-      const str = direction.replace('Arrow', '').toLowerCase()
-      console.log(str)
+    move ({ key = '' }) {
+      console.log(key)
+      const str = key.replace('Arrow', '').toLowerCase()
       core.move(str)
       this.$forceUpdate()
     }
@@ -77,8 +128,11 @@ export default {
 *
   margin 0
   padding 0
+:root
+  --blocks-ctn-size 800px
 html, body
   size(100%)
+  background-color gray
 size($w, $h = $w)
   height $h
   width $w
@@ -90,18 +144,60 @@ size($w, $h = $w)
   align-items center
   box-sizing border-box
   padding-top 5rem
-  background-color gray
   .setting
     display flex
     flex-direction column
     justify-content center
     align-items center
     line-height 3rem
+    font-size 1.5rem
+    padding-bottom 2rem
+    button
+      padding 0.3rem 1rem
+      background white
+      border none
+      font-size inherit
+      &:active
+        box-shadow 5px 5px 5px gray
 .blocks-ctn
   display flex
   flex-wrap wrap
-  size(800px)
+  position relative
+  size(var(--blocks-ctn-size))
   &.answer
-    position relative
+    size(150px)
+    opacity 0.5
+    position absolute
+    top 4em
+    left 1em
     z-index 1
+  .answer-ring
+    position absolute
+    box-sizing border-box
+    border 1rem solid rgba(black, 0.4)
+.finish
+  position fixed
+  top 0
+  left 0
+  .line
+    position fixed
+    top 50%
+    width 100%
+    transform translateY(-50%)
+    display flex
+    justify-content center
+    align-items center
+    font-size 3rem
+    font-weight 800
+    font-family monospace
+    height 12rem
+    z-index 2
+    background linear-gradient(217deg, rgba(255, 0, 0, 0.8), rgba(255, 0, 0, 0) 70.71%), linear-gradient(127deg, rgba(0, 255, 0, 0.8), rgba(0, 255, 0, 0) 70.71%), linear-gradient(336deg, rgba(0, 0, 255, 0.8), rgba(0, 0, 255, 0) 70.71%)
+  .background
+    position fixed
+    z-index 0
+    background rgba(gray, 0.7)
+    content ''
+    width 100vw
+    height 100vh
 </style>

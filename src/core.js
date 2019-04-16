@@ -29,10 +29,20 @@ export class RubicsGameCore {
     this.blocks = []
     /** @type {{id: number, color: string, text: string, verifyKey: number}[]} */
     this.answer = []
+    this.isEnd = false
+    this.startTime = 0
+    this.endTime = 0
   }
 
   get controlBlockId () {
     return this.size ** 2
+  }
+
+  reset () {
+    this.isEnd = false
+    this.size = 4
+    while (this.blocks.pop());
+    while (this.answer.pop());
   }
 
   /**
@@ -64,7 +74,6 @@ export class RubicsGameCore {
       if (i <= tmp.length - 1 && i >= tmp.length - this.size + 1) return false
       return true
     })
-    console.log(this.answer)
   }
 
   start () {
@@ -72,6 +81,7 @@ export class RubicsGameCore {
     this.blocks[this.blocks.length - 1].color = 'transparent'
     this.blocks[this.blocks.length - 1].text = ' '
     shuffle(this.blocks)
+    this.startTime = Date.now()
     this.createAnswer()
   }
   /**
@@ -87,7 +97,7 @@ export class RubicsGameCore {
         break
       case 'up':
         blockToSwitchArrayId = controlBlockPositionArrayId + this.size
-        if (blockToSwitchArrayId > this.controlBlockId) blockToSwitchArrayId = controlBlockPositionArrayId
+        if (blockToSwitchArrayId > this.size ** 2) blockToSwitchArrayId = controlBlockPositionArrayId
         break
       case 'right':
         if (controlBlockPositionArrayId % this.size === 0) blockToSwitchArrayId = controlBlockPositionArrayId
@@ -100,19 +110,27 @@ export class RubicsGameCore {
       default:
         return false
     }
-    console.log(controlBlockPositionArrayId)
-    console.log(blockToSwitchArrayId)
     if (controlBlockPositionArrayId === blockToSwitchArrayId) return false
     else {
-      [this.blocks[controlBlockPositionArrayId], this.blocks[blockToSwitchArrayId]] = [this.blocks[blockToSwitchArrayId], this.blocks[controlBlockPositionArrayId]]
-      return true
+      if (this.blocks[controlBlockPositionArrayId] && this.blocks[blockToSwitchArrayId]) {
+        [this.blocks[controlBlockPositionArrayId], this.blocks[blockToSwitchArrayId]] = [this.blocks[blockToSwitchArrayId], this.blocks[controlBlockPositionArrayId]]
+        this.validation()
+        return true
+      } else {
+        return false
+      }
     }
   }
 
   validation () {
-    return this.answer.every(ele => {
+    if (!(this.answer.length && this.blocks.length)) return false
+    this.isEnd = this.answer.every(ele => {
       return this.blocks[ele.verifyKey].color === ele.color || this.blocks[ele.verifyKey].id === ele.id
     })
+    if (this.isEnd) {
+      this.endTime = Date.now()
+    }
+    return this.isEnd
   }
 }
 
