@@ -122,6 +122,15 @@ export class RubicsGameCore {
     }
   }
 
+  canMove (id) {
+    const controlBlockPositionArrayId = this.blocks.findIndex(b => b.id === this.controlBlockId)
+    if (id - this.size === controlBlockPositionArrayId) return 'up'
+    if (id + this.size === controlBlockPositionArrayId) return 'down'
+    if (id + 1 === controlBlockPositionArrayId) return 'right'
+    if (id - 1 === controlBlockPositionArrayId) return 'left'
+    return false
+  }
+
   validation () {
     if (!(this.answer.length && this.blocks.length)) return false
     this.isEnd = this.answer.every(ele => {
